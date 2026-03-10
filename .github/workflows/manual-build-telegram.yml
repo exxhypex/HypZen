@@ -1,0 +1,119 @@
+name: Manual Build and Send APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      build_type:
+        description: "Build type"
+        required: true
+        default: "debug"
+        type: choice
+        options:
+          - debug
+          - release
+      telegram_chat_id:
+        description: "Telegram chat id (example: 123456789 or -1001234567890)"
+        required: true
+        type: string
+
+jobs:
+  build-and-send:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      BUILD_TYPE: ${{ inputs.build_type }}
+      TELEGRAM_CHAT_ID: ${{ inputs.telegram_chat_id }}
+      TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+      # Optional release signing secrets (needed only when build_type=release):
+      # KEYSTORE_JKS_BASE64: base64 of himelkeystore.jks
+      KEYSTORE_JKS_BASE64: ${{ secrets.KEYSTORE_JKS_BASE64 }}
+      RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+      RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+      RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+
+      - name: Validate Inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${TELEGRAM_BOT_TOKEN:-}" ]]; then
+            echo "Missing secret TELEGRAM_BOT_TOKEN."
+            exit 1
+          fi
+
+      - name: Prepare Release Keystore (release only)
+        if: ${{ inputs.build_type == 'release' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ -z "${KEYSTORE_JKS_BASE64:-}" ]]; then
+            echo "Missing secret KEYSTORE_JKS_BASE64 for release signing."
+            exit 1
+          fi
+          if [[ -z "${RELEASE_STORE_PASSWORD:-}" || -z "${RELEASE_KEY_ALIAS:-}" || -z "${RELEASE_KEY_PASSWORD:-}" ]]; then
+            echo "Missing one of: RELEASE_STORE_PASSWORD, RELEASE_KEY_ALIAS, RELEASE_KEY_PASSWORD."
+            exit 1
+          fi
+          echo "${KEYSTORE_JKS_BASE64}" | base64 --decode > himelkeystore.jks
+
+      - name: Build APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x ./gradlew
+          if [[ "${BUILD_TYPE}" == "release" ]]; then
+            ./gradlew :app:assembleRelease \
+              -PRELEASE_STORE_FILE=himelkeystore.jks \
+              -PRELEASE_STORE_PASSWORD="${RELEASE_STORE_PASSWORD}" \
+              -PRELEASE_KEY_ALIAS="${RELEASE_KEY_ALIAS}" \
+              -PRELEASE_KEY_PASSWORD="${RELEASE_KEY_PASSWORD}"
+          else
+            ./gradlew :app:assembleDebug
+          fi
+
+      - name: Locate APK
+        id: apk
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${BUILD_TYPE}" == "release" ]]; then
+            APK_PATH="app/build/outputs/apk/release/app-release.apk"
+          else
+            APK_PATH="app/build/outputs/apk/debug/app-debug.apk"
+          fi
+          if [[ ! -f "${APK_PATH}" ]]; then
+            echo "APK not found at ${APK_PATH}"
+            echo "Listing outputs:"
+            ls -la app/build/outputs/apk || true
+            find app/build/outputs -maxdepth 4 -type f -name '*.apk' -print || true
+            exit 1
+          fi
+          echo "apk_path=${APK_PATH}" >> "${GITHUB_OUTPUT}"
+
+      - name: Send APK to Telegram
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK_PATH="${{ steps.apk.outputs.apk_path }}"
+          CAPTION="HypZen ${BUILD_TYPE} APK
+          repo=${GITHUB_REPOSITORY}
+          ref=${GITHUB_REF_NAME}
+          sha=${GITHUB_SHA}"
+          curl -fSs \
+            -X POST \
+            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+            -F "chat_id=${TELEGRAM_CHAT_ID}" \
+            -F "caption=${CAPTION}" \
+            -F "document=@${APK_PATH}"
+
