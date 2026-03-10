@@ -22,7 +22,9 @@ signing.properties
 .gemini/
 .kotlin/
 
+# AndroidIDE / local env
+ide_env/
+
 # SDK/tool bundles (keep repo light; app uses its own packaged binaries)
 platform-tools/
 build-tools/
-
