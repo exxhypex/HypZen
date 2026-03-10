@@ -1,0 +1,28 @@
+# Android/Gradle
+.gradle/
+**/build/
+local.properties
+*.iml
+.idea/
+
+# Outputs
+*.apk
+*.aab
+
+# Secrets / signing
+*.jks
+*.keystore
+*.p12
+keystore.properties
+signing.properties
+
+# Local tooling folders
+.acside/
+.androidpe/
+.gemini/
+.kotlin/
+
+# SDK/tool bundles (keep repo light; app uses its own packaged binaries)
+platform-tools/
+build-tools/
+
