@@ -1,4 +1,4 @@
-# Hyflash Batch Flash Improvements
+# HypZen Batch Flash Improvements
 
 - [x] **1. File Size Reliability**
     - [x] Update `FastbootManager.flash` to accept a `Long` size.

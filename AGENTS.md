@@ -2,7 +2,7 @@
 
 ## Project Structure & Module Organization
 - Android app module: `app/`.
-- Kotlin source: `app/src/main/kotlin/com/hypex/hyflash/`.
+- Kotlin source: `app/src/main/kotlin/com/hypex/hypzen/`.
   - `data/`: USB, ADB, Fastboot, platform-tools managers.
   - `viewmodel/`: app orchestration (`MainViewModel`).
   - `ui/`: Compose screens, components, and theme.

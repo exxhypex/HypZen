@@ -1,6 +1,6 @@
-*Hyflash v1.0 — Release Changelog*
+*HypZen v1.0 — Release Changelog*
 
-`Package:` `com.hypex.hyflash`  
+`Package:` `com.hypex.hypzen`  
 `Type:` Android-to-Android USB OTG Flash Tool  
 `Min Android:` 12L (SDK 32)
 

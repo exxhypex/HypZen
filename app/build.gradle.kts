@@ -5,11 +5,11 @@ plugins {
 }
 
 android {
-    namespace = "com.hypex.hyflash"
+    namespace = "com.hypex.hypzen"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.hypex.hyflash"
+        applicationId = "com.hypex.hypzen"
         minSdk = 26
         targetSdk = 34
         versionCode = 1

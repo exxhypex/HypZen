@@ -19,12 +19,12 @@
         android:label="@string/app_name"
         android:roundIcon="@drawable/ic_logo"
         android:supportsRtl="true"
-        android:theme="@style/Theme.Hyflash">
+        android:theme="@style/Theme.HypZen">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:theme="@style/Theme.Hyflash"
+            android:theme="@style/Theme.HypZen"
             android:screenOrientation="portrait">
 
             <intent-filter>

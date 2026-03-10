@@ -29,6 +29,6 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Hyflash"
+rootProject.name = "HypZen"
 
 include(":app")
