@@ -82,8 +82,7 @@ jobs:
             ./gradlew :app:assembleDebug
           fi
 
-      - name: Locate APK
-        id: apk
+      - name: Send APK(s) to Telegram
         shell: bash
         run: |
           set -euo pipefail
@@ -94,32 +93,32 @@ jobs:
             exit 1
           fi
 
-          APK_PATH="$(find "${OUT_DIR}" -maxdepth 1 -type f -name '*.apk' | sort | grep -i 'universal' | head -n 1 || true)"
-          if [[ -z "${APK_PATH}" ]]; then
-            APK_PATH="$(find "${OUT_DIR}" -maxdepth 1 -type f -name '*.apk' | sort | head -n 1 || true)"
-          fi
-
-          if [[ -z "${APK_PATH}" || ! -f "${APK_PATH}" ]]; then
-            echo "No APK found in ${OUT_DIR}"
+          mapfile -t APKS < <(find "${OUT_DIR}" -maxdepth 1 -type f -name '*.apk' | sort)
+          if [[ ${#APKS[@]} -eq 0 ]]; then
+            echo "No APKs found in ${OUT_DIR}"
             echo "Listing outputs:"
             ls -la app/build/outputs/apk || true
             find app/build/outputs -maxdepth 4 -type f -name '*.apk' -print || true
             exit 1
           fi
-          echo "apk_path=${APK_PATH}" >> "${GITHUB_OUTPUT}"
 
-      - name: Send APK to Telegram
-        shell: bash
-        run: |
-          set -euo pipefail
-          APK_PATH="${{ steps.apk.outputs.apk_path }}"
-          CAPTION="HypZen ${BUILD_TYPE} APK
-          repo=${GITHUB_REPOSITORY}
-          ref=${GITHUB_REF_NAME}
-          sha=${GITHUB_SHA}"
-          curl -fSs \
-            -X POST \
-            "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
-            -F "chat_id=${TELEGRAM_CHAT_ID}" \
-            -F "caption=${CAPTION}" \
-            -F "document=@${APK_PATH}"
+          echo "Found ${#APKS[@]} APK(s) in ${OUT_DIR}:"
+          printf '%s\n' "${APKS[@]}"
+
+          i=0
+          for APK_PATH in "${APKS[@]}"; do
+            i=$((i+1))
+            APK_NAME="$(basename "${APK_PATH}")"
+            CAPTION="HypZen ${BUILD_TYPE} APK (${i}/${#APKS[@]})
+file=${APK_NAME}
+repo=${GITHUB_REPOSITORY}
+ref=${GITHUB_REF_NAME}
+sha=${GITHUB_SHA}"
+            curl -fSs \
+              -X POST \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
+              -F "chat_id=${TELEGRAM_CHAT_ID}" \
+              -F "caption=${CAPTION}" \
+              -F "document=@${APK_PATH}"
+            sleep 1
+          done
