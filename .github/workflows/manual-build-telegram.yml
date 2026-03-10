@@ -121,11 +121,12 @@ jobs:
               PREFIX="HypZen"
             fi
 
-            CAPTION="${PREFIX} ${BUILD_TYPE} APK (${i}/${#APKS[@]})
-file=${APK_NAME}
-repo=${GITHUB_REPOSITORY}
-ref=${GITHUB_REF_NAME}
-sha=${GITHUB_SHA}"
+            CAPTION="$(printf '%s\n' \
+              "${PREFIX} ${BUILD_TYPE} APK (${i}/${#APKS[@]})" \
+              "file=${APK_NAME}" \
+              "repo=${GITHUB_REPOSITORY}" \
+              "ref=${GITHUB_REF_NAME}" \
+              "sha=${GITHUB_SHA}")"
             curl -fSs \
               -X POST \
               "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
