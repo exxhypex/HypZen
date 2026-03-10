@@ -15,6 +15,11 @@ on:
         description: "Telegram chat id (example: 123456789 or -1001234567890)"
         required: true
         type: string
+      telegram_caption:
+        description: "Custom caption prefix (optional)"
+        required: false
+        default: ""
+        type: string
 
 jobs:
   build-and-send:
@@ -24,6 +29,7 @@ jobs:
     env:
       BUILD_TYPE: ${{ inputs.build_type }}
       TELEGRAM_CHAT_ID: ${{ inputs.telegram_chat_id }}
+      TELEGRAM_CAPTION: ${{ inputs.telegram_caption }}
       TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
       # Optional release signing secrets (needed only when build_type=release):
       # KEYSTORE_JKS_BASE64: base64 of himelkeystore.jks
@@ -109,7 +115,13 @@ jobs:
           for APK_PATH in "${APKS[@]}"; do
             i=$((i+1))
             APK_NAME="$(basename "${APK_PATH}")"
-            CAPTION="HypZen ${BUILD_TYPE} APK (${i}/${#APKS[@]})
+            if [[ -n "${TELEGRAM_CAPTION:-}" ]]; then
+              PREFIX="${TELEGRAM_CAPTION}"
+            else
+              PREFIX="HypZen"
+            fi
+
+            CAPTION="${PREFIX} ${BUILD_TYPE} APK (${i}/${#APKS[@]})
 file=${APK_NAME}
 repo=${GITHUB_REPOSITORY}
 ref=${GITHUB_REF_NAME}
