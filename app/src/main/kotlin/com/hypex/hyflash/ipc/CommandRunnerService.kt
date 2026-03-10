@@ -80,7 +80,7 @@ class CommandRunnerService : Service() {
                         putString(KEY_TEXT, text)
                         putInt(KEY_TYPE, type.ordinal)
                     }
-                    val out = Message.obtain(null, MSG_LOG).apply { data = b }
+                    val out = Message.obtain(null, MSG_LOG).apply { setData(b) }
                     try {
                         reply.send(out)
                     } catch (_: RemoteException) {
@@ -94,7 +94,7 @@ class CommandRunnerService : Service() {
                         putLong(KEY_ELAPSED_MS, elapsedMs)
                         putInt(KEY_LINES, lines)
                     }
-                    val out = Message.obtain(null, MSG_FINISHED).apply { data = b }
+                    val out = Message.obtain(null, MSG_FINISHED).apply { setData(b) }
                     runCatching { reply.send(out) }
                 }
 
@@ -160,4 +160,3 @@ class CommandRunnerService : Service() {
 
     override fun onBind(intent: Intent?): IBinder = messenger.binder
 }
-

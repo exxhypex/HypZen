@@ -92,7 +92,7 @@ class SandboxedPlatformToolsManager(private val context: Context) {
                     putStringArrayList(CommandRunnerService.KEY_ENV_VALUES, ArrayList(extraEnv.values))
                 }
                 val m = Message.obtain(null, CommandRunnerService.MSG_RUN).apply {
-                    data = b
+                    setData(b)
                     replyTo = replyMessenger
                 }
                 svc.send(m)
@@ -111,4 +111,3 @@ class SandboxedPlatformToolsManager(private val context: Context) {
         }
     }
 }
-
