@@ -88,6 +88,13 @@ jobs:
             ./gradlew :app:assembleDebug
           fi
 
+      - name: Upload APK(s) Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: apks-${{ inputs.build_type }}
+          path: app/build/outputs/apk/${{ inputs.build_type }}/*.apk
+          if-no-files-found: error
+
       - name: Send APK(s) to Telegram
         shell: bash
         run: |
@@ -111,10 +118,23 @@ jobs:
           echo "Found ${#APKS[@]} APK(s) in ${OUT_DIR}:"
           printf '%s\n' "${APKS[@]}"
 
+          send_message() {
+            local text="$1"
+            curl -sS \
+              -X POST \
+              "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage" \
+              -F "chat_id=${TELEGRAM_CHAT_ID}" \
+              -F "text=${text}" \
+              >/dev/null
+          }
+
           i=0
+          sent_ok=0
           for APK_PATH in "${APKS[@]}"; do
             i=$((i+1))
             APK_NAME="$(basename "${APK_PATH}")"
+            APK_BYTES="$(stat -c%s "${APK_PATH}")"
+            APK_MB="$(( (APK_BYTES + 1024*1024 - 1) / (1024*1024) ))"
             if [[ -n "${TELEGRAM_CAPTION:-}" ]]; then
               PREFIX="${TELEGRAM_CAPTION}"
             else
@@ -124,14 +144,32 @@ jobs:
             CAPTION="$(printf '%s\n' \
               "${PREFIX} ${BUILD_TYPE} APK (${i}/${#APKS[@]})" \
               "file=${APK_NAME}" \
+              "size=${APK_MB}MB" \
               "repo=${GITHUB_REPOSITORY}" \
               "ref=${GITHUB_REF_NAME}" \
               "sha=${GITHUB_SHA}")"
-            curl -fSs \
+
+            # Telegram bots commonly fail with "file is too big" around ~50MB. Skip big APKs but keep them as artifacts.
+            if [[ "${APK_MB}" -ge 49 ]]; then
+              echo "Skipping Telegram upload (too large): ${APK_NAME} (${APK_MB}MB)"
+              send_message "$(printf '%s\n' "${CAPTION}" "note=skipped telegram upload (file too large). download from workflow artifacts.")" || true
+              continue
+            fi
+
+            RESP="$(curl -sS \
               -X POST \
               "https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendDocument" \
               -F "chat_id=${TELEGRAM_CHAT_ID}" \
               -F "caption=${CAPTION}" \
-              -F "document=@${APK_PATH}"
+              -F "document=@${APK_PATH}" || true)"
+            echo "Telegram response for ${APK_NAME}: ${RESP}"
+            if echo "${RESP}" | grep -q '\"ok\":true'; then
+              sent_ok=$((sent_ok+1))
+            fi
             sleep 1
           done
+
+          if [[ "${sent_ok}" -eq 0 ]]; then
+            echo "No APKs were successfully sent to Telegram. Check chat_id/bot permissions or Telegram API response above."
+            exit 1
+          fi
